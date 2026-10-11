@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if report %}{{ report.station }} Weather – {% endif %}METAR Reader</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>METAR Reader</h1>
+      <p class="tagline">Airport weather reports, in plain English.</p>
+    </header>
+
+    <form method="get" action="{{ url_for('index') }}" class="search">
+      <label for="code" class="visually-hidden">Airport code</label>
+      <input id="code" name="code" type="text" value="{{ code }}" placeholder="Airport code, e.g. KHIO or LAX"
+             maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus required>
+      <button type="submit">Get weather</button>
+    </form>
+
+    {% if error %}
+      <p class="error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    {% if report %}
+      <section class="report">
+        <h2>{{ station_name }} <span class="station">{{ report.station }}</span></h2>
+        {% if report.observed_at %}
+          <p class="observed">
+            Observed {{ report.observed_at.strftime('%H:%M') }} UTC{% if age %} · {{ age }}{% endif %}
+          </p>
+        {% endif %}
+
+        <p class="summary">{{ report.summary }}</p>
+
+        <dl class="details">
+          {% if report.temperature_c is not none %}
+            <div><dt>Temperature</dt>
+              <dd>{{ report.temperature_f|round|int }}°F ({{ report.temperature_c|round|int }}°C)
+                {% if report.feels_like_f is not none %}<small>feels like {{ report.feels_like_f }}°F</small>{% endif %}
+              </dd></div>
+          {% endif %}
+          {% if report.dewpoint_c is not none %}
+            <div><dt>Dew point</dt><dd>{{ report.dewpoint_f|round|int }}°F ({{ report.dewpoint_c|round|int }}°C)</dd></div>
+          {% endif %}
+          {% if report.humidity is not none %}
+            <div><dt>Humidity</dt><dd>{{ report.humidity }}%</dd></div>
+          {% endif %}
+          <div><dt>Wind</dt>
+            <dd>{{ report.describe_wind() }}
+              {% if report.wind_variable_range %}
+                <small>direction varying {{ report.wind_variable_range[0] }}°–{{ report.wind_variable_range[1] }}°</small>
+              {% endif %}
+            </dd></div>
+          <div><dt>Visibility</dt><dd>{{ report.describe_visibility() }}</dd></div>
+          <div><dt>Sky</dt><dd>{{ report.describe_sky() }}</dd></div>
+          {% if report.weather %}
+            <div><dt>Weather</dt><dd>{{ report.describe_weather()|capitalize }}</dd></div>
+          {% endif %}
+          {% if report.altimeter_inhg %}
+            <div><dt>Pressure</dt><dd>{{ '%.2f'|format(report.altimeter_inhg) }} inHg</dd></div>
+          {% endif %}
+        </dl>
+
+        <details class="raw">
+          <summary>Raw METAR</summary>
+          <code>{{ report.raw }}</code>
+        </details>
+      </section>
+    {% endif %}
+
+    <footer>
+      Data from <a href="https://aviationweather.gov/" target="_blank" rel="noopener">aviationweather.gov</a>.
+      Not for flight planning.
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,112 @@
+:root {
+  --bg: #eef3f8;
+  --card: #ffffff;
+  --text: #1d2733;
+  --muted: #5f6b7a;
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --border: #d8e0ea;
+  --error-bg: #fdecec;
+  --error-text: #a12020;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 3rem 1.25rem;
+}
+
+header { text-align: center; margin-bottom: 1.5rem; }
+h1 { margin: 0; font-size: 2rem; }
+.tagline { margin: .25rem 0 0; color: var(--muted); }
+
+.search { display: flex; gap: .5rem; }
+.search input {
+  flex: 1;
+  padding: .75rem 1rem;
+  font-size: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+.search input::placeholder { text-transform: none; }
+.search button {
+  padding: .75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.search button:hover { background: var(--accent-dark); }
+
+.error {
+  margin-top: 1rem;
+  padding: .75rem 1rem;
+  background: var(--error-bg);
+  color: var(--error-text);
+  border-radius: 8px;
+}
+
+.report {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.report h2 { margin: 0; font-size: 1.3rem; }
+.station { color: var(--muted); font-weight: normal; font-size: 1rem; }
+.observed { margin: .25rem 0 0; color: var(--muted); font-size: .9rem; }
+
+.summary {
+  font-size: 1.25rem;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.details { margin: 0; display: grid; gap: .5rem; }
+.details div {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--border);
+}
+.details dt { color: var(--muted); }
+.details dd { margin: 0; }
+.details small { display: block; color: var(--muted); }
+
+.raw { margin-top: 1rem; color: var(--muted); }
+.raw summary { cursor: pointer; }
+.raw code {
+  display: block;
+  margin-top: .5rem;
+  padding: .75rem;
+  background: #f4f6f9;
+  border-radius: 6px;
+  word-break: break-word;
+}
+
+footer { margin-top: 2rem; text-align: center; color: var(--muted); font-size: .85rem; }
+footer a { color: inherit; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
