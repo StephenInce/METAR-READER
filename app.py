@@ -1,5 +1,20 @@
-"""Flask web app: look up an airport's METAR and show it in plain English."""
+"""METAR Reader web application.
 
+A small Flask app that looks up the latest METAR (aviation routine weather
+report) for an airport and presents it in plain English.
+
+The raw report is fetched from the aviationweather.gov Data API and decoded
+by :mod:`metar_decoder`. This module only handles input validation, the HTTP
+request to the weather service, and rendering the page.
+
+Run locally with::
+
+    python app.py
+
+then open http://127.0.0.1:5000 in a browser.
+"""
+
+import os
 import re
 from datetime import datetime, timezone
 
@@ -8,38 +23,71 @@ from flask import Flask, render_template, request
 
 from metar_decoder import MetarDecodeError, decode
 
+#: Endpoint of the aviationweather.gov METAR API.
 METAR_API_URL = "https://aviationweather.gov/api/data/metar"
-REQUEST_TIMEOUT = 10  # seconds
+
+#: Seconds to wait for the weather service before giving up.
+REQUEST_TIMEOUT = 10
 
 app = Flask(__name__)
 
 
 class MetarLookupError(Exception):
-    """A user-facing problem fetching a METAR."""
+    """A problem fetching a METAR whose message is safe to show to users."""
 
 
 def normalize_code(code: str) -> str:
+    """Validate an airport code and convert it to the ICAO form used by METARs.
+
+    Args:
+        code: The airport code as typed by the user, e.g. ``"khio"`` or ``"LAX"``.
+
+    Returns:
+        The upper-cased ICAO station identifier, e.g. ``"KHIO"`` or ``"KLAX"``.
+
+    Raises:
+        MetarLookupError: If the code isn't 3 or 4 letters/digits.
+    """
     code = code.strip().upper()
     if not re.fullmatch(r"[A-Z0-9]{3,4}", code):
         raise MetarLookupError("Please enter a 3 or 4 character airport code, like KJFK or LAX.")
-    # US airports are often known by their 3-letter code (LAX); METAR uses the ICAO form (KLAX).
+
+    # People usually know US airports by their 3-letter FAA/IATA code (LAX),
+    # but the weather service only accepts the 4-letter ICAO form (KLAX).
     if len(code) == 3 and code.isalpha():
         code = "K" + code
     return code
 
 
 def fetch_metar(code: str) -> dict:
-    """Return the latest METAR record for an ICAO station from aviationweather.gov."""
+    """Fetch the latest METAR record for a station from aviationweather.gov.
+
+    Args:
+        code: A 4-character ICAO station identifier, e.g. ``"KHIO"``.
+
+    Returns:
+        The station's record from the API's JSON response. The fields used by
+        this app are ``rawOb`` (the raw METAR text) and ``name`` (the
+        airport's full name).
+
+    Raises:
+        MetarLookupError: If the service can't be reached, returns an error,
+            or has no report for the station.
+    """
     try:
         response = requests.get(
             METAR_API_URL,
             params={"ids": code, "format": "json"},
+            # Identify the app to the service, as its usage guidelines ask.
             headers={"User-Agent": "METAR-Reader/1.0"},
             timeout=REQUEST_TIMEOUT,
         )
-    except requests.RequestException:
-        raise MetarLookupError("Couldn't reach the aviation weather service. Please try again in a moment.")
+    except requests.RequestException as exc:
+        raise MetarLookupError(
+            "Couldn't reach the aviation weather service. Please try again in a moment."
+        ) from exc
 
+    # The API answers unknown stations with "204 No Content" rather than a 404.
     if response.status_code == 204 or not response.content:
         raise MetarLookupError(f"No weather report found for {code}. Check the airport code and try again.")
     if response.status_code != 200:
@@ -47,16 +95,27 @@ def fetch_metar(code: str) -> dict:
 
     try:
         records = response.json()
-    except ValueError:
-        raise MetarLookupError("The aviation weather service sent back an unexpected response.")
+    except ValueError as exc:
+        raise MetarLookupError("The aviation weather service sent back an unexpected response.") from exc
     if not records:
         raise MetarLookupError(f"No weather report found for {code}. Check the airport code and try again.")
+
+    # We request a single station, so the first record is the one we want.
     return records[0]
 
 
 def describe_age(observed_at: datetime | None) -> str | None:
+    """Describe how long ago a report was observed, e.g. ``"12 minutes ago"``.
+
+    Args:
+        observed_at: The observation time in UTC, or ``None`` if unknown.
+
+    Returns:
+        A short human-readable age, or ``None`` if ``observed_at`` is ``None``.
+    """
     if observed_at is None:
         return None
+
     minutes = int((datetime.now(timezone.utc) - observed_at).total_seconds() // 60)
     if minutes < 1:
         return "just now"
@@ -68,6 +127,11 @@ def describe_age(observed_at: datetime | None) -> str | None:
 
 @app.route("/")
 def index():
+    """Render the search page and, if a code was submitted, its weather report.
+
+    The airport code arrives as the ``code`` query parameter (``/?code=KHIO``),
+    so every report has a shareable, bookmarkable URL.
+    """
     code = request.args.get("code", "").strip()
     context = {"code": code.upper(), "report": None, "error": None}
 
@@ -84,10 +148,14 @@ def index():
         except MetarLookupError as exc:
             context["error"] = str(exc)
         except (MetarDecodeError, KeyError):
+            # The service responded, but not with a METAR we could read.
             context["error"] = "Sorry, we couldn't understand the weather report for that airport."
 
     return render_template("index.html", **context)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Flask's built-in server is for local development only. Debug mode is
+    # off unless FLASK_DEBUG=1 is set, because the debugger lets anyone who
+    # can reach the page run code on the machine.
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")
