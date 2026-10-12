@@ -88,13 +88,77 @@ $env:FLASK_DEBUG = "1"; python app.py     # PowerShell
 
 > **Never enable debug mode on a public server.** The debugger lets anyone who can reach the page run code on your machine.
 
-## Running the tests
+## Testing
+
+The project has a [pytest](https://docs.pytest.org/) suite covering both the METAR decoder and the web app. pytest is installed with the other dependencies in `requirements.txt`.
+
+### Running the tests
+
+With the virtual environment activated, from the project folder:
 
 ```bash
 pytest
 ```
 
-The tests cover the decoder using real METARs from US and international airports, plus edge cases such as calm winds, thunderstorms, below-freezing temperatures, and missing data. The web app is tested with mock METARs in place of the live weather service, so the tests run offline and give the same results every time.
+You should see something like `52 passed in 0.71s`. If a test fails, pytest prints the expected and actual values.
+
+To run the tests without activating the virtual environment:
+
+```bash
+.venv\Scripts\python.exe -m pytest      # Windows PowerShell
+.venv/Scripts/python.exe -m pytest      # Git Bash
+.venv/bin/python -m pytest              # macOS / Linux
+```
+
+Useful options:
+
+| Command | What it does |
+|---|---|
+| `pytest -v` | Lists each test by name with PASSED or FAILED |
+| `pytest tests/test_app.py` | Runs only the web app tests |
+| `pytest tests/test_metar_decoder.py` | Runs only the decoder tests |
+| `pytest -k snow` | Runs only tests whose name contains "snow" |
+| `pytest -x` | Stops at the first failure |
+| `pytest --lf` | Re-runs only the tests that failed last time |
+
+### What's tested
+
+**`tests/test_metar_decoder.py`: the METAR decoder**
+
+Decodes real METARs from US and international airports and checks each part: wind, gusts, visibility in miles and meters, weather, cloud layers, temperatures below freezing, pressure in inHg and hPa, and wind chill. It also covers edge cases such as calm winds, missing cloud heights, reports from the previous month, and empty input.
+
+**`tests/test_app.py`: the web app**
+
+These tests never contact aviationweather.gov. `requests.get` is replaced with a mock that returns a canned response containing a mock METAR, so the tests run offline, finish in under a second, and don't depend on the current weather. Everything else runs for real: code checking, the API request, decoding, and the rendered page.
+
+- **Mock METARs → plain English**: six weather scenarios, each checked against the exact summary sentence and the details on the page:
+
+  | Scenario | Expected summary |
+  |---|---|
+  | Clear day | Clear skies, 55°F (13°C). Light and variable winds around 3 mph. |
+  | Thunderstorm | Heavy thunderstorm with rain, overcast, 75°F (24°C). Strong wind from the west at 29 mph, gusting to 46 mph. Visibility is reduced to 1 mile. |
+  | Snow | Light snow, freezing fog, overcast, 10°F (-12°C), feels like -9°F. Strong wind from the northwest at 21 mph. Visibility is reduced to 1/2 mile. |
+  | Hot and humid | Partly cloudy, 91°F (33°C), feels like 108°F. Moderate wind from the east at 14 mph. |
+  | Dense fog | Fog, sky obscured, 54°F (12°C). Calm winds. Visibility is reduced to 1/4 mile. |
+  | CAVOK (international) | Clear skies, 64°F (18°C). Moderate wind from the northeast at 12 mph. |
+
+- **Airport codes**: lowercase and padded input is accepted, US 3-letter codes become ICAO codes (`LAX` → `KLAX`), and invalid codes are rejected without calling the API.
+- **Weather service responses**: the correct URL and parameters are sent, and unknown airports, empty replies, server errors, bad data, timeouts, and network failures each produce a friendly error message.
+- **Page details**: observation time and age ("20 minutes ago"), the airport name (or the station code when there's no name), and the raw METAR.
+
+### Adding a weather scenario
+
+To test how a new METAR is decoded, add an entry to `WEATHER_CASES` in `tests/test_app.py`: a name, the raw METAR, the summary you expect, and any other text that should appear on the page.
+
+```python
+"windy and clear": (
+    "METAR KABC 111853Z 27030KT 10SM CLR 20/05 A3000",
+    "Clear skies, 68°F (20°C). Very strong wind from the west at 35 mph.",
+    ["10+ miles (excellent)"],
+),
+```
+
+Work out the expected text by hand rather than copying the app's output, so the test checks the right answer instead of the current one.
 
 ## Deploying publicly
 
