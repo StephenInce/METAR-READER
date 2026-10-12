@@ -232,7 +232,7 @@ class Metar:
         if self.visibility_sm is None:
             return "Unavailable"
         miles = format_miles(self.visibility_sm)
-        unit = "mile" if self.visibility_sm == 1 and not self.visibility_modifier else "miles"
+        unit = "mile" if self.visibility_sm <= 1 else "miles"
         if self.visibility_modifier == "P" or self.visibility_sm >= 10:
             return f"{miles}+ miles (excellent)"
         if self.visibility_modifier == "M":

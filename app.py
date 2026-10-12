@@ -88,10 +88,14 @@ def fetch_metar(code: str) -> dict:
         ) from exc
 
     # The API answers unknown stations with "204 No Content" rather than a 404.
-    if response.status_code == 204 or not response.content:
+    if response.status_code == 204:
         raise MetarLookupError(f"No weather report found for {code}. Check the airport code and try again.")
+    # Check for errors before looking at the body, so an outage isn't
+    # mistaken for an unknown airport.
     if response.status_code != 200:
         raise MetarLookupError(f"The aviation weather service returned an error ({response.status_code}).")
+    if not response.content:
+        raise MetarLookupError(f"No weather report found for {code}. Check the airport code and try again.")
 
     try:
         records = response.json()

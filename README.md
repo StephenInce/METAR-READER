@@ -94,7 +94,7 @@ $env:FLASK_DEBUG = "1"; python app.py     # PowerShell
 pytest
 ```
 
-The tests cover the decoder using real METARs from US and international airports, plus edge cases such as calm winds, thunderstorms, below-freezing temperatures, and missing data.
+The tests cover the decoder using real METARs from US and international airports, plus edge cases such as calm winds, thunderstorms, below-freezing temperatures, and missing data. The web app is tested with mock METARs in place of the live weather service, so the tests run offline and give the same results every time.
 
 ## Deploying publicly
 
@@ -130,6 +130,7 @@ METAR-READER/
 ├── static/
 │   └── style.css           # Page styles
 ├── tests/
+│   ├── test_app.py         # Web app tests using mock METARs
 │   └── test_metar_decoder.py
 ├── LICENSE
 ├── requirements.txt
